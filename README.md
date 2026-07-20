@@ -9,7 +9,7 @@ This project is a Budget application.
 For collaboration with the application development, view the
 ( ____), which offers OOP, samples, development, and a reference.
 
-# Vault: Advanced Budget & Resource Tracker 📊
+# Budget Vault: Advanced Budget & Resource Tracker 📊
 
 A modular, offline-first Flutter application designed for project leads, engineering students, and organization managers. Vault goes beyond simple expense tracking by introducing dedicated modules for hardware Bill of Materials (BOM), daily burn-rate calculations, and formal organizational audits—all wrapped in a sleek, high-contrast dark mode UI.
 
