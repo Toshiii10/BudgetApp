@@ -81,8 +81,8 @@ class SettingsTab extends StatelessWidget {
             subtitle: 'Dark Mode (Default)',
             trailing: Switch(
               value: true,
-              activeColor: const Color(0xFF00E676),
-              onChanged: (val) {}, // Placeholder for theme toggling
+              activeThumbColor: const Color(0xFF00E676), // <--- Updated here
+              onChanged: (val) {}, 
             ),
             onTap: () {},
           ),
@@ -92,7 +92,7 @@ class SettingsTab extends StatelessWidget {
             subtitle: 'Alert me before fixed bills are due',
             trailing: Switch(
               value: false,
-              activeColor: const Color(0xFF00E676),
+              activeThumbColor: const Color(0xFF00E676), // <--- Updated here
               onChanged: (val) {}, 
             ),
             onTap: () {},
