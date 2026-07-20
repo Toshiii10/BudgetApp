@@ -86,7 +86,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
         },
       ),
       const BudgetTab(),
-      const SettingsTab(), 
+      SettingsTab(transactions: _transactions), 
     ];
 
     return Scaffold(
