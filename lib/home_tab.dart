@@ -8,19 +8,17 @@ class HomeTab extends StatelessWidget {
 
   const HomeTab({super.key, required this.transactions});
 
-  // Calculate total expenses to generate percentages
+  // --- PIE CHART LOGIC ---
   double get _totalExpenses {
     return transactions
         .where((tx) => tx.amount < 0)
         .fold(0.0, (sum, item) => sum + item.amount.abs());
   }
 
-  // Group expenses dynamically by their Vault or Tag
   Map<String, double> get _expenseBreakdown {
     Map<String, double> breakdown = {};
     for (var tx in transactions) {
       if (tx.amount < 0) {
-        // Use the tag if it exists (e.g., 'Project LUNTIAN'), otherwise use the Vault
         String category = tx.tag.isNotEmpty ? tx.tag : tx.vault;
         breakdown[category] = (breakdown[category] ?? 0) + tx.amount.abs();
       }
@@ -28,10 +26,28 @@ class HomeTab extends StatelessWidget {
     return breakdown;
   }
 
+  // --- BURN RATE WIDGET LOGIC ---
+  // In a full app, these would be adjustable in settings. For now, we mock the parameters.
+  final double internshipAllowance = 8000.00; 
+  final int totalDays = 45; // roughly 300 hours spread across weeks
+  final int daysPassed = 12; // Example progress
+
+  double get _allowanceSpent {
+    // We calculate only the expenses tagged for the internship/daily use
+    return transactions
+        .where((tx) => tx.amount < 0 && tx.vault == 'Personal') 
+        .fold(0.0, (sum, item) => sum + item.amount.abs());
+  }
+
   @override
   Widget build(BuildContext context) {
     final breakdown = _expenseBreakdown;
     final total = _totalExpenses;
+    
+    // Burn Rate Calculations
+    final int daysRemaining = totalDays - daysPassed;
+    final double remainingAllowance = internshipAllowance - _allowanceSpent;
+    final double safeDailySpend = daysRemaining > 0 ? (remainingAllowance / daysRemaining) : 0.0;
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -39,13 +55,83 @@ class HomeTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- NEW: DAILY BURN RATE WIDGET ---
+            const Text(
+              'ACTIVE ALLOWANCE',
+              style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A1A24), Color(0xFF121212)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3), width: 1),
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFF00E676).withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 2),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Safe to spend today', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E676).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$daysRemaining days left', 
+                          style: const TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.bold)
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '\$${safeDailySpend.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: _allowanceSpent / internshipAllowance,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade800,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Spent: \$${_allowanceSpent.toStringAsFixed(0)}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                      Text('Total: \$${internshipAllowance.toStringAsFixed(0)}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // --- EXISTING PIE CHART ---
             const Text(
               'EXPENSE OVERVIEW',
               style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
-            // --- PIE CHART CANVAS ---
             Container(
               height: 300,
               padding: const EdgeInsets.all(16),
@@ -53,11 +139,7 @@ class HomeTab extends StatelessWidget {
                 color: const Color(0xFF1E1E1E),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 5)),
                 ],
               ),
               child: breakdown.isEmpty
@@ -72,7 +154,6 @@ class HomeTab extends StatelessWidget {
                             sections: _generateChartSections(breakdown, total),
                           ),
                         ),
-                        // Center Text
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -94,7 +175,6 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             
-            // --- DYNAMIC LEGEND ---
             ...breakdown.entries.map((entry) {
               final percentage = (entry.value / total) * 100;
               return _buildLegendItem(
@@ -110,7 +190,6 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  // Generates the colored slices of the pie chart
   List<PieChartSectionData> _generateChartSections(Map<String, double> breakdown, double total) {
     return breakdown.entries.map((entry) {
       final percentage = (entry.value / total) * 100;
@@ -124,7 +203,6 @@ class HomeTab extends StatelessWidget {
     }).toList();
   }
 
-  // Helper widget for the list below the chart
   Widget _buildLegendItem({required String title, required double amount, required double percentage, required Color color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -145,11 +223,10 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  // Assigns distinct neon colors to different categories
   Color _getColorForCategory(String category) {
     final hash = category.hashCode;
     final colors = [
-      const Color(0xFF00E676), // Neon Green
+      const Color(0xFF00E676),
       Colors.cyanAccent,
       Colors.amberAccent,
       Colors.pinkAccent,
