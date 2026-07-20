@@ -1,5 +1,10 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'auth_page.dart'; 
+import 'transaction.dart';
+import 'transactions_tab.dart'; 
+import 'home_tab.dart';
+import 'funds_tab.dart'; 
 
 void main() {
   runApp(const BudgetApp());
@@ -28,26 +33,6 @@ class BudgetApp extends StatelessWidget {
   }
 }
 
-// --- UPGRADED MODEL ---
-class Transaction {
-  String id;
-  String title;
-  double amount;
-  DateTime date;
-  String vault; // Added for Event & Organizational Vaults
-  String tag;   // Added for Project & Component Tagging
-
-  Transaction({
-    required this.id,
-    required this.title,
-    required this.amount,
-    required this.date,
-    this.vault = 'Personal',
-    this.tag = '',
-  });
-}
-
-// --- MAIN UI ---
 class BudgetHomePage extends StatefulWidget {
   const BudgetHomePage({super.key});
 
@@ -56,7 +41,8 @@ class BudgetHomePage extends StatefulWidget {
 }
 
 class _BudgetHomePageState extends State<BudgetHomePage> {
-  // Pre-loaded with examples of your specific use-cases
+  int _currentIndex = 2; // Keep default on Transactions for now
+
   final List<Transaction> _transactions = [
     Transaction(
       id: '1', 
@@ -76,315 +62,69 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     ),
   ];
 
-  double get _totalBalance {
-    return _transactions.fold(0.0, (sum, item) => sum + item.amount);
-  }
-
-  // --- UPGRADED CREATE & UPDATE FUNCTION ---
-  void _showTransactionForm([Transaction? existingTransaction]) {
-    final titleController = TextEditingController(text: existingTransaction?.title ?? '');
-    final amountController = TextEditingController(
-        text: existingTransaction != null ? existingTransaction.amount.abs().toString() : '');
-    final vaultController = TextEditingController(text: existingTransaction?.vault ?? 'Personal');
-    final tagController = TextEditingController(text: existingTransaction?.tag ?? '');
-    
-    bool isIncome = existingTransaction != null && existingTransaction.amount > 0;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  Widget _buildPlaceholderTab(String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 60, color: const Color(0xFF00E676).withValues(alpha: 0.5)),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
       ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                top: 24, left: 24, right: 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      existingTransaction == null ? 'New Transaction' : 'Edit Transaction',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Text('Expense'),
-                            selected: !isIncome,
-                            selectedColor: Colors.redAccent.withValues(alpha: 0.2),
-                            onSelected: (val) => setModalState(() => isIncome = false),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Text('Income'),
-                            selected: isIncome,
-                            selectedColor: const Color(0xFF00E676).withValues(alpha: 0.2),
-                            onSelected: (val) => setModalState(() => isIncome = true),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'What was this for?',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.description),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextField(
-                      controller: amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Amount (\$)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.attach_money),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // New Vault Field
-                    TextField(
-                      controller: vaultController,
-                      decoration: const InputDecoration(
-                        labelText: 'Vault (e.g., Personal, SETScapade)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.account_balance_wallet),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // New Tag Field
-                    TextField(
-                      controller: tagController,
-                      decoration: const InputDecoration(
-                        labelText: 'Tag (e.g., Project LUNTIAN, Hardware)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.label),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00E676),
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () {
-                          final title = titleController.text;
-                          final amountText = amountController.text;
-                          final vault = vaultController.text.isEmpty ? 'Personal' : vaultController.text;
-                          final tag = tagController.text;
-
-                          if (title.isEmpty || amountText.isEmpty) return;
-
-                          final parsedAmount = double.tryParse(amountText) ?? 0.0;
-                          final finalAmount = isIncome ? parsedAmount : -parsedAmount;
-
-                          setState(() {
-                            if (existingTransaction == null) {
-                              _transactions.add(Transaction(
-                                id: DateTime.now().toString(),
-                                title: title,
-                                amount: finalAmount,
-                                date: DateTime.now(),
-                                vault: vault,
-                                tag: tag,
-                              ));
-                            } else {
-                              existingTransaction.title = title;
-                              existingTransaction.amount = finalAmount;
-                              existingTransaction.vault = vault;
-                              existingTransaction.tag = tag;
-                            }
-                          });
-                          Navigator.of(ctx).pop();
-                        },
-                        child: Text(
-                          existingTransaction == null ? 'Save Transaction' : 'Update Transaction',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            );
-          }
-        );
-      },
     );
-  }
-
-  void _deleteTransaction(String id) {
-    setState(() {
-      _transactions.removeWhere((tx) => tx.id == id);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Transaction deleted'), behavior: SnackBarBehavior.floating),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.month}/${date.day}/${date.year}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> tabs = [
+      HomeTab(transactions: _transactions), // <--- Replaced placeholder!
+      const FundsTab(),
+      TransactionsTab(
+        transactions: _transactions,
+        onUpdate: () => setState(() {}),
+      ),
+      _buildPlaceholderTab('Budget Planning\n(Limits & Goals)', Icons.pie_chart_outline),
+      _buildPlaceholderTab('Settings\n(App Preferences & Export)', Icons.settings_outlined),
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Budget', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Budget Tracker', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-      ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E1E1E), Color(0xFF2C2C2C)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                const Text('TOTAL BALANCE', style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.5)),
-                const SizedBox(height: 8),
-                Text(
-                  '\$${_totalBalance.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    color: _totalBalance >= 0 ? const Color(0xFF00E676) : Colors.redAccent,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: _transactions.isEmpty
-                ? const Center(child: Text('No transactions yet. Add one!', style: TextStyle(color: Colors.grey)))
-                : ListView.builder(
-                    itemCount: _transactions.length,
-                    itemBuilder: (ctx, index) {
-                      final tx = _transactions[index];
-                      final isIncome = tx.amount >= 0;
-
-                      return Dismissible(
-                        key: ValueKey(tx.id),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(Icons.delete, color: Colors.white, size: 30),
-                        ),
-                        onDismissed: (direction) => _deleteTransaction(tx.id),
-                        child: Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          elevation: 0,
-                          color: const Color(0xFF1E1E1E),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            leading: CircleAvatar(
-                              backgroundColor: isIncome 
-                                  ? const Color(0xFF00E676).withValues(alpha: 0.1) 
-                                  : Colors.redAccent.withValues(alpha: 0.1),
-                              child: Icon(
-                                isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                                color: isIncome ? const Color(0xFF00E676) : Colors.redAccent,
-                              ),
-                            ),
-                            title: Text(tx.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            
-                            // UPGRADED SUBTITLE: Now shows Vault and Tag
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 6.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.account_balance_wallet, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
-                                      Text(tx.vault, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                      if (tx.tag.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        const Icon(Icons.label, size: 14, color: Color(0xFF00E676)),
-                                        const SizedBox(width: 4),
-                                        Text(tx.tag, style: const TextStyle(color: Color(0xFF00E676), fontSize: 12)),
-                                      ]
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(_formatDate(tx.date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                ],
-                              ),
-                            ),
-                            trailing: Text(
-                              '${isIncome ? '+' : '-'}\$${tx.amount.abs().toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: isIncome ? const Color(0xFF00E676) : Colors.redAccent,
-                              ),
-                            ),
-                            onTap: () => _showTransactionForm(tx),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const AuthPage()),
+              );
+            },
+          )
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF00E676),
-        foregroundColor: Colors.black,
-        onPressed: () => _showTransactionForm(),
-        child: const Icon(Icons.add),
+      body: tabs[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1E1E1E),
+        selectedItemColor: const Color(0xFF00E676),
+        unselectedItemColor: Colors.grey,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.account_balance), label: 'Funds'), // <--- 3. Relabel to Funds
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Transactions'),
+          BottomNavigationBarItem(icon: Icon(Icons.pie_chart), label: 'Budget'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+        ],
       ),
     );
   }
