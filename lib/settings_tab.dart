@@ -1,11 +1,77 @@
 // lib/settings_tab.dart
 import 'package:flutter/material.dart';
+import 'dart:io';
+
+// --- ALL REQUIRED IMPORTS ---
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart'; // Fixes the SharePlus error
+
+import 'transaction.dart';
 
 class SettingsTab extends StatelessWidget {
-  const SettingsTab({super.key});
+  final List<Transaction> transactions;
 
-  // Mock function to simulate a file export
-  void _simulateExport(BuildContext context, String format) {
+  const SettingsTab({super.key, required this.transactions});
+
+  // --- THE EXPORT ENGINE ---
+  Future<void> _exportToCSV(BuildContext context) async {
+    try {
+      // 1. Define the Spreadsheet Headers
+      List<List<dynamic>> rows = [
+        ['Date', 'Title', 'Amount', 'Vault', 'Tag', 'Transaction ID']
+      ];
+
+      // 2. Loop through your data and build the rows
+      for (var tx in transactions) {
+        rows.add([
+          '${tx.date.year}-${tx.date.month.toString().padLeft(2, '0')}-${tx.date.day.toString().padLeft(2, '0')}',
+          tx.title,
+          tx.amount,
+          tx.vault,
+          tx.tag,
+          tx.id,
+        ]);
+      }
+
+      // 3. Convert the rows into a CSV string NATIVELY (No package needed!)
+      String csvData = rows.map((row) {
+        return row.map((cell) {
+          String cellString = cell.toString();
+          // If a title has a comma in it, wrap it in quotes so it doesn't break the spreadsheet
+          if (cellString.contains(',')) {
+            return '"$cellString"';
+          }
+          return cellString;
+        }).join(','); // Join columns with commas
+      }).join('\n'); // Join rows with newlines
+
+      // 4. Find a temporary folder on the phone to build the file
+      final directory = await getTemporaryDirectory();
+      final path = '${directory.path}/Vault_Ledger_Export.csv';
+      final File file = File(path);
+
+      // 5. Write the data to the file
+      await file.writeAsString(csvData);
+
+      // 6. Trigger the native Android Share UI 
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(path)], 
+          text: 'Attached is the exported financial ledger.',
+        ),
+      );
+      
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  // UI Dialogue to confirm before exporting
+  void _showExportDialog(BuildContext context, String format) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -27,16 +93,16 @@ class SettingsTab extends StatelessWidget {
               foregroundColor: Colors.black,
             ),
             onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Success: BudgetReport.$format saved to device!'),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: const Color(0xFF00E676),
-                ),
-              );
+              Navigator.of(ctx).pop(); // Close dialogue
+              if (format == 'CSV') {
+                _exportToCSV(context); // Fire the engine!
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PDF Export coming soon!'), backgroundColor: Colors.cyanAccent),
+                );
+              }
             },
-            child: const Text('Export File'),
+            child: const Text('Generate File'),
           ),
         ],
       ),
@@ -59,13 +125,13 @@ class SettingsTab extends StatelessWidget {
             icon: Icons.table_chart,
             title: 'Export as CSV',
             subtitle: 'Best for spreadsheets and expense reports',
-            onTap: () => _simulateExport(context, 'CSV'),
+            onTap: () => _showExportDialog(context, 'CSV'),
           ),
           _buildSettingsCard(
             icon: Icons.picture_as_pdf,
             title: 'Export as PDF',
             subtitle: 'Best for printing and physical records',
-            onTap: () => _simulateExport(context, 'PDF'),
+            onTap: () => _showExportDialog(context, 'PDF'),
           ),
           
           const SizedBox(height: 32),
@@ -81,7 +147,7 @@ class SettingsTab extends StatelessWidget {
             subtitle: 'Dark Mode (Default)',
             trailing: Switch(
               value: true,
-              activeThumbColor: const Color(0xFF00E676), // <--- Updated here
+              activeThumbColor: const Color(0xFF00E676),
               onChanged: (val) {}, 
             ),
             onTap: () {},
@@ -92,7 +158,7 @@ class SettingsTab extends StatelessWidget {
             subtitle: 'Alert me before fixed bills are due',
             trailing: Switch(
               value: false,
-              activeThumbColor: const Color(0xFF00E676), // <--- Updated here
+              activeThumbColor: const Color(0xFF00E676),
               onChanged: (val) {}, 
             ),
             onTap: () {},
@@ -111,7 +177,6 @@ class SettingsTab extends StatelessWidget {
     );
   }
 
-  // Helper widget for clean list items
   Widget _buildSettingsCard({
     required IconData icon,
     required String title,
