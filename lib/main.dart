@@ -5,6 +5,7 @@ import 'auth_page.dart';
 import 'transaction.dart';
 import 'transactions_tab.dart'; 
 import 'home_tab.dart';
+import 'settings_tab.dart';
 import 'funds_tab.dart'; 
 
 void main() {
@@ -90,7 +91,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
         onUpdate: () => setState(() {}),
       ),
       const BudgetTab(),
-      _buildPlaceholderTab('Settings\n(App Preferences & Export)', Icons.settings_outlined),
+      const SettingsTab(),
     ];
 
     return Scaffold(
