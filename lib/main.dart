@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,7 +38,6 @@ class BudgetApp extends StatelessWidget {
   }
 }
 
-// THIS WAS THE MISSING CLASS
 class BudgetHomePage extends StatefulWidget {
   const BudgetHomePage({super.key});
 
@@ -73,30 +73,11 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     await prefs.setString('saved_transactions', encodedList);
   }
 
-  Widget _buildPlaceholderTab(String message, IconData icon) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 60, color: const Color(0xFF00E676).withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey, fontSize: 16),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-   final List<Widget> tabs = [
+    final List<Widget> tabs = [
       HomeTab(transactions: _transactions), 
-      
-      FundsTab(transactions: _transactions), // <--- Updated this line!
-      
+      FundsTab(transactions: _transactions), 
       TransactionsTab(
         transactions: _transactions,
         onUpdate: () {
