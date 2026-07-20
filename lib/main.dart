@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'auth_page.dart'; // <--- 1. Add this import
+import 'auth_page.dart'; 
 
 void main() {
   runApp(const BudgetApp());
@@ -23,23 +23,27 @@ class BudgetApp extends StatelessWidget {
         ),
         fontFamily: 'Roboto',
       ),
-      home: const AuthPage(), // <--- 2. Change this from BudgetHomePage to AuthPage
+      home: const AuthPage(), 
     );
   }
 }
 
-// --- MODEL ---
+// --- UPGRADED MODEL ---
 class Transaction {
   String id;
   String title;
   double amount;
   DateTime date;
+  String vault; // Added for Event & Organizational Vaults
+  String tag;   // Added for Project & Component Tagging
 
   Transaction({
     required this.id,
     required this.title,
     required this.amount,
     required this.date,
+    this.vault = 'Personal',
+    this.tag = '',
   });
 }
 
@@ -52,23 +56,38 @@ class BudgetHomePage extends StatefulWidget {
 }
 
 class _BudgetHomePageState extends State<BudgetHomePage> {
-  // --- STATE (The 'Read' part of CRUD) ---
+  // Pre-loaded with examples of your specific use-cases
   final List<Transaction> _transactions = [
-    Transaction(id: '1', title: 'Groceries', amount: -120.50, date: DateTime.now()),
-    Transaction(id: '2', title: 'Freelance Work', amount: 500.00, date: DateTime.now().subtract(const Duration(days: 1))),
+    Transaction(
+      id: '1', 
+      title: 'ESP32 & Moisture Sensors', 
+      amount: -1250.00, 
+      date: DateTime.now(),
+      vault: 'Personal',
+      tag: 'Project LUNTIAN',
+    ),
+    Transaction(
+      id: '2', 
+      title: 'Venue Downpayment', 
+      amount: -5000.00, 
+      date: DateTime.now().subtract(const Duration(days: 2)),
+      vault: 'SETScapade Assembly',
+      tag: 'Logistics',
+    ),
   ];
 
   double get _totalBalance {
     return _transactions.fold(0.0, (sum, item) => sum + item.amount);
   }
 
-  // --- CREATE & UPDATE FUNCTION ---
+  // --- UPGRADED CREATE & UPDATE FUNCTION ---
   void _showTransactionForm([Transaction? existingTransaction]) {
     final titleController = TextEditingController(text: existingTransaction?.title ?? '');
     final amountController = TextEditingController(
         text: existingTransaction != null ? existingTransaction.amount.abs().toString() : '');
+    final vaultController = TextEditingController(text: existingTransaction?.vault ?? 'Personal');
+    final tagController = TextEditingController(text: existingTransaction?.tag ?? '');
     
-    // Default to expense (false) unless editing an income
     bool isIncome = existingTransaction != null && existingTransaction.amount > 0;
 
     showModalBottomSheet(
@@ -86,104 +105,133 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                 bottom: MediaQuery.of(ctx).viewInsets.bottom,
                 top: 24, left: 24, right: 24,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    existingTransaction == null ? 'New Transaction' : 'Edit Transaction',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  // Income/Expense Toggle
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text('Expense'),
-                          selected: !isIncome,
-                          selectedColor: Colors.redAccent.withOpacity(0.2),
-                          onSelected: (val) => setModalState(() => isIncome = false),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text('Income'),
-                          selected: isIncome,
-                          selectedColor: const Color(0xFF00E676).withOpacity(0.2),
-                          onSelected: (val) => setModalState(() => isIncome = true),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'What was this for?',
-                      border: OutlineInputBorder(),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      existingTransaction == null ? 'New Transaction' : 'Edit Transaction',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Amount (\$)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00E676),
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 20),
+                    
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Text('Expense'),
+                            selected: !isIncome,
+                            selectedColor: Colors.redAccent.withValues(alpha: 0.2),
+                            onSelected: (val) => setModalState(() => isIncome = false),
+                          ),
                         ),
-                      ),
-                      onPressed: () {
-                        final title = titleController.text;
-                        final amountText = amountController.text;
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Text('Income'),
+                            selected: isIncome,
+                            selectedColor: const Color(0xFF00E676).withValues(alpha: 0.2),
+                            onSelected: (val) => setModalState(() => isIncome = true),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
 
-                        if (title.isEmpty || amountText.isEmpty) return;
-
-                        final parsedAmount = double.tryParse(amountText) ?? 0.0;
-                        final finalAmount = isIncome ? parsedAmount : -parsedAmount;
-
-                        setState(() {
-                          if (existingTransaction == null) {
-                            // CREATE
-                            _transactions.add(Transaction(
-                              id: DateTime.now().toString(),
-                              title: title,
-                              amount: finalAmount,
-                              date: DateTime.now(),
-                            ));
-                          } else {
-                            // UPDATE
-                            existingTransaction.title = title;
-                            existingTransaction.amount = finalAmount;
-                          }
-                        });
-                        Navigator.of(ctx).pop();
-                      },
-                      child: Text(
-                        existingTransaction == null ? 'Save Transaction' : 'Update Transaction',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'What was this for?',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.description),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    const SizedBox(height: 16),
+                    
+                    TextField(
+                      controller: amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Amount (\$)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.attach_money),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // New Vault Field
+                    TextField(
+                      controller: vaultController,
+                      decoration: const InputDecoration(
+                        labelText: 'Vault (e.g., Personal, SETScapade)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.account_balance_wallet),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // New Tag Field
+                    TextField(
+                      controller: tagController,
+                      decoration: const InputDecoration(
+                        labelText: 'Tag (e.g., Project LUNTIAN, Hardware)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.label),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00E676),
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          final title = titleController.text;
+                          final amountText = amountController.text;
+                          final vault = vaultController.text.isEmpty ? 'Personal' : vaultController.text;
+                          final tag = tagController.text;
+
+                          if (title.isEmpty || amountText.isEmpty) return;
+
+                          final parsedAmount = double.tryParse(amountText) ?? 0.0;
+                          final finalAmount = isIncome ? parsedAmount : -parsedAmount;
+
+                          setState(() {
+                            if (existingTransaction == null) {
+                              _transactions.add(Transaction(
+                                id: DateTime.now().toString(),
+                                title: title,
+                                amount: finalAmount,
+                                date: DateTime.now(),
+                                vault: vault,
+                                tag: tag,
+                              ));
+                            } else {
+                              existingTransaction.title = title;
+                              existingTransaction.amount = finalAmount;
+                              existingTransaction.vault = vault;
+                              existingTransaction.tag = tag;
+                            }
+                          });
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Text(
+                          existingTransaction == null ? 'Save Transaction' : 'Update Transaction',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             );
           }
@@ -192,7 +240,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     );
   }
 
-  // --- DELETE FUNCTION ---
   void _deleteTransaction(String id) {
     setState(() {
       _transactions.removeWhere((tx) => tx.id == id);
@@ -202,7 +249,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     );
   }
 
-  // Helper to format date simply without extra packages
   String _formatDate(DateTime date) {
     return '${date.month}/${date.day}/${date.year}';
   }
@@ -217,7 +263,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
       ),
       body: Column(
         children: [
-          // Header / Total Balance Card
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(16),
@@ -231,7 +276,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),
@@ -253,7 +298,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
             ),
           ),
 
-          // Transactions List
           Expanded(
             child: _transactions.isEmpty
                 ? const Center(child: Text('No transactions yet. Add one!', style: TextStyle(color: Colors.grey)))
@@ -283,18 +327,42 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                           color: const Color(0xFF1E1E1E),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             leading: CircleAvatar(
                               backgroundColor: isIncome 
-                                  ? const Color(0xFF00E676).withOpacity(0.1) 
-                                  : Colors.redAccent.withOpacity(0.1),
+                                  ? const Color(0xFF00E676).withValues(alpha: 0.1) 
+                                  : Colors.redAccent.withValues(alpha: 0.1),
                               child: Icon(
                                 isIncome ? Icons.arrow_downward : Icons.arrow_upward,
                                 color: isIncome ? const Color(0xFF00E676) : Colors.redAccent,
                               ),
                             ),
                             title: Text(tx.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            subtitle: Text(_formatDate(tx.date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            
+                            // UPGRADED SUBTITLE: Now shows Vault and Tag
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 6.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.account_balance_wallet, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Text(tx.vault, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                      if (tx.tag.isNotEmpty) ...[
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.label, size: 14, color: Color(0xFF00E676)),
+                                        const SizedBox(width: 4),
+                                        Text(tx.tag, style: const TextStyle(color: Color(0xFF00E676), fontSize: 12)),
+                                      ]
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(_formatDate(tx.date), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                ],
+                              ),
+                            ),
                             trailing: Text(
                               '${isIncome ? '+' : '-'}\$${tx.amount.abs().toStringAsFixed(2)}',
                               style: TextStyle(
@@ -303,7 +371,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
                                 color: isIncome ? const Color(0xFF00E676) : Colors.redAccent,
                               ),
                             ),
-                            // Update triggered on tap
                             onTap: () => _showTransactionForm(tx),
                           ),
                         ),
@@ -313,7 +380,6 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
           ),
         ],
       ),
-      // Create triggered on FAB tap
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF00E676),
         foregroundColor: Colors.black,
