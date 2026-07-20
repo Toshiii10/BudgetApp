@@ -1,12 +1,14 @@
-// lib/main.dart
-import 'budget_tab.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'auth_page.dart'; 
 import 'transaction.dart';
 import 'transactions_tab.dart'; 
-import 'home_tab.dart';
+import 'funds_tab.dart';
+import 'budget_tab.dart';
 import 'settings_tab.dart';
-import 'funds_tab.dart'; 
+import 'home_tab.dart';
 
 void main() {
   runApp(const BudgetApp());
@@ -35,6 +37,7 @@ class BudgetApp extends StatelessWidget {
   }
 }
 
+// THIS WAS THE MISSING CLASS
 class BudgetHomePage extends StatefulWidget {
   const BudgetHomePage({super.key});
 
@@ -43,26 +46,32 @@ class BudgetHomePage extends StatefulWidget {
 }
 
 class _BudgetHomePageState extends State<BudgetHomePage> {
-  int _currentIndex = 2; // Keep default on Transactions for now
+  int _currentIndex = 2; 
+  List<Transaction> _transactions = []; 
 
-  final List<Transaction> _transactions = [
-    Transaction(
-      id: '1', 
-      title: 'ESP32 & Moisture Sensors', 
-      amount: -1250.00, 
-      date: DateTime.now(),
-      vault: 'Personal',
-      tag: 'Project LUNTIAN',
-    ),
-    Transaction(
-      id: '2', 
-      title: 'Venue Downpayment', 
-      amount: -5000.00, 
-      date: DateTime.now().subtract(const Duration(days: 2)),
-      vault: 'SETScapade Assembly',
-      tag: 'Logistics',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? txString = prefs.getString('saved_transactions');
+    
+    if (txString != null) {
+      final List<dynamic> decodedList = jsonDecode(txString);
+      setState(() {
+        _transactions = decodedList.map((item) => Transaction.fromJson(item)).toList();
+      });
+    }
+  }
+
+  Future<void> _saveData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedList = jsonEncode(_transactions.map((tx) => tx.toJson()).toList());
+    await prefs.setString('saved_transactions', encodedList);
+  }
 
   Widget _buildPlaceholderTab(String message, IconData icon) {
     return Center(
@@ -83,15 +92,20 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> tabs = [
-      HomeTab(transactions: _transactions), // <--- Replaced placeholder!
-      const FundsTab(),
+   final List<Widget> tabs = [
+      HomeTab(transactions: _transactions), 
+      
+      FundsTab(transactions: _transactions), // <--- Updated this line!
+      
       TransactionsTab(
         transactions: _transactions,
-        onUpdate: () => setState(() {}),
+        onUpdate: () {
+          setState(() {}); 
+          _saveData();     
+        },
       ),
       const BudgetTab(),
-      const SettingsTab(),
+      const SettingsTab(), 
     ];
 
     return Scaffold(
@@ -122,7 +136,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
         unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance), label: 'Funds'), // <--- 3. Relabel to Funds
+          BottomNavigationBarItem(icon: Icon(Icons.account_balance), label: 'Funds'),
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Transactions'),
           BottomNavigationBarItem(icon: Icon(Icons.pie_chart), label: 'Budget'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
