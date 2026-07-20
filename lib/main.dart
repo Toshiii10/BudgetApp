@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'budget_tab.dart';
 import 'package:flutter/material.dart';
 import 'auth_page.dart'; 
 import 'transaction.dart';
@@ -88,7 +89,7 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
         transactions: _transactions,
         onUpdate: () => setState(() {}),
       ),
-      _buildPlaceholderTab('Budget Planning\n(Limits & Goals)', Icons.pie_chart_outline),
+      const BudgetTab(),
       _buildPlaceholderTab('Settings\n(App Preferences & Export)', Icons.settings_outlined),
     ];
 
