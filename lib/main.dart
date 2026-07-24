@@ -10,6 +10,7 @@ import 'funds_tab.dart';
 import 'budget_tab.dart';
 import 'settings_tab.dart';
 import 'home_tab.dart';
+import 'database_helper.dart'; // <--- NEW IMPORT HERE
 
 void main() {
   runApp(const BudgetApp());
@@ -55,22 +56,20 @@ class _BudgetHomePageState extends State<BudgetHomePage> {
     _loadData();
   }
 
+  // --- NEW SQL LOAD DATA ---
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? txString = prefs.getString('saved_transactions');
-    
-    if (txString != null) {
-      final List<dynamic> decodedList = jsonDecode(txString);
-      setState(() {
-        _transactions = decodedList.map((item) => Transaction.fromJson(item)).toList();
-      });
-    }
+    final data = await DatabaseHelper.instance.fetchAllTransactions();
+    setState(() {
+      _transactions = data;
+    });
   }
 
+  // --- NEW SQL SAVE DATA ---
   Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String encodedList = jsonEncode(_transactions.map((tx) => tx.toJson()).toList());
-    await prefs.setString('saved_transactions', encodedList);
+    await DatabaseHelper.instance.clearDatabase();
+    for (var tx in _transactions) {
+      await DatabaseHelper.instance.insertTransaction(tx);
+    }
   }
 
   @override
